@@ -50,7 +50,8 @@ async function fetchGoldPrices() {
   showLoading();
 
   try {
-    // Use proxy to avoid CORS issues
+    console.log("Fetching from:", `${PROXY_URL}${encodeURIComponent(API_URL)}`);
+
     const response = await fetch(`${PROXY_URL}${encodeURIComponent(API_URL)}`);
 
     if (!response.ok) {
@@ -58,10 +59,18 @@ async function fetchGoldPrices() {
     }
 
     const data = await response.json();
-    const xmlData = data.contents;
+    console.log("Full proxy response:", data);
 
-    // Parse XML data
-    goldData = parseGoldData(xmlData);
+    const jsonString = data.contents;
+    console.log("JSON string from contents:", jsonString);
+
+    // Parse the JSON string
+    const jsonData = JSON.parse(jsonString);
+    console.log("Parsed JSON data:", jsonData);
+
+    // Parse gold data
+    goldData = parseGoldData(jsonData);
+    console.log("Parsed gold data:", goldData);
 
     if (goldData.length === 0) {
       throw new Error("Không có dữ liệu giá vàng");
@@ -82,39 +91,55 @@ async function fetchGoldPrices() {
   }
 }
 
-// Parse XML data from API response
-function parseGoldData(xmlString) {
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+// Parse JSON data from API response
+function parseGoldData(jsonData) {
+  try {
+    console.log("Parsing JSON data:", jsonData);
 
-  // Check for parsing errors
-  const parseError = xmlDoc.querySelector("parsererror");
-  if (parseError) {
-    throw new Error("XML parsing error");
-  }
-
-  const dataElements = xmlDoc.querySelectorAll("Data");
-  const goldPrices = [];
-
-  dataElements.forEach((dataElement) => {
-    const goldItem = {
-      row: dataElement.getAttribute("row"),
-      name: dataElement.getAttribute("n_1"),
-      karat: dataElement.getAttribute("k_1"),
-      purity: dataElement.getAttribute("h_1"),
-      buyPrice: parseInt(dataElement.getAttribute("pb_1")) || 0,
-      sellPrice: parseInt(dataElement.getAttribute("ps_1")) || 0,
-      worldPrice: parseInt(dataElement.getAttribute("pt_1")) || 0,
-      updateTime: dataElement.getAttribute("d_1"),
-      menuId: dataElement.getAttribute("menuid") || "",
-    };
-
-    if (goldItem.name) {
-      goldPrices.push(goldItem);
+    if (!jsonData || !jsonData.DataList || !jsonData.DataList.Data) {
+      throw new Error("Invalid JSON structure");
     }
-  });
 
-  return goldPrices;
+    const dataArray = jsonData.DataList.Data;
+    const goldPrices = [];
+
+    dataArray.forEach((item, index) => {
+      const row = item["@row"] || (index + 1).toString();
+
+      // The API uses dynamic field names like @n_1, @n_2, etc.
+      const nameField = `@n_${row}`;
+      const karatField = `@k_${row}`;
+      const purityField = `@h_${row}`;
+      const buyPriceField = `@pb_${row}`;
+      const sellPriceField = `@ps_${row}`;
+      const worldPriceField = `@pt_${row}`;
+      const dateField = `@d_${row}`;
+
+      const goldItem = {
+        row: row,
+        name: item[nameField] || "",
+        karat: item[karatField] || "",
+        purity: item[purityField] || "",
+        buyPrice: parseInt(item[buyPriceField]) || 0,
+        sellPrice: parseInt(item[sellPriceField]) || 0,
+        worldPrice: parseInt(item[worldPriceField]) || 0,
+        updateTime: item[dateField] || "",
+        menuId: "",
+      };
+
+      console.log(`Item ${index + 1}:`, goldItem);
+
+      if (goldItem.name && goldItem.name.trim()) {
+        goldPrices.push(goldItem);
+      }
+    });
+
+    console.log(`Successfully parsed ${goldPrices.length} gold items`);
+    return goldPrices;
+  } catch (error) {
+    console.error("Error in parseGoldData:", error);
+    throw new Error(`Lỗi phân tích dữ liệu: ${error.message}`);
+  }
 }
 
 // Populate category filter dropdown
@@ -194,7 +219,7 @@ function createGoldCard(goldItem) {
   const card = document.createElement("div");
   card.className = "gold-card";
 
-  const categoryName = CATEGORY_MAPPINGS[goldItem.menuId] || "Khác";
+  const categoryName = getCategoryFromName(goldItem.name);
 
   card.innerHTML = `
         <div class="gold-header">
@@ -242,6 +267,16 @@ function createGoldCard(goldItem) {
     `;
 
   return card;
+}
+
+// Get category from name
+function getCategoryFromName(name) {
+  if (name.includes("MIẾNG")) return "VÀNG MIẾNG";
+  if (name.includes("NHẪN")) return "NHẪN TRÒN TRƠN";
+  if (name.includes("TRANG SỨC")) return "VÀNG TRANG SỨC";
+  if (name.includes("NGUYÊN LIỆU")) return "VÀNG NGUYÊN LIỆU";
+  if (name.includes("QUÀ MỪNG")) return "QUÀ MỪNG VÀNG";
+  return "Khác";
 }
 
 // Get short category name

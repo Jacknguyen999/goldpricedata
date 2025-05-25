@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test - Gold Price Tracker</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #f9f9f9;
+      }
+      .success {
+        border-color: #4ade80;
+        background: #f0fdf4;
+      }
+      .error {
+        border-color: #ef4444;
+        background: #fef2f2;
+      }
+      .warning {
+        border-color: #f59e0b;
+        background: #fefbf0;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      pre {
+        background: #1f2937;
+        color: #f9fafb;
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+      }
+      .log {
+        max-height: 300px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔧 Gold Price API Test</h1>
+    <p>
+      This page helps debug API connection issues with the BTMC gold price API.
+    </p>
+
+    <div class="test-section">
+      <h3>🎯 Quick Tests</h3>
+      <button onclick="testAllProxies()">Test All Proxies</button>
+      <button onclick="testDirectAPI()">Test Direct API</button>
+      <button onclick="clearLogs()">Clear Logs</button>
+      <button onclick="loadMainSite()">Load Main Site</button>
+    </div>
+
+    <div class="test-section">
+      <h3>📊 Test Results</h3>
+      <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📝 Logs</h3>
+      <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+      const API_URL =
+        "http://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45hnoh8hmn7t5kc2v";
+      const PROXY_URLS = [
+        "https://api.allorigins.win/get?url=",
+        "https://corsproxy.io/?",
+        "https://cors-anywhere.herokuapp.com/",
+      ];
+
+      function log(message, type = "info") {
+        const logsDiv = document.getElementById("logs");
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement("div");
+        logEntry.innerHTML = `<span style="color: #666">[${timestamp}]</span> ${message}`;
+        logsDiv.appendChild(logEntry);
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+        console.log(message);
+      }
+
+      function addResult(title, status, details) {
+        const resultsDiv = document.getElementById("results");
+        const resultDiv = document.createElement("div");
+        resultDiv.className = `test-section ${status}`;
+        resultDiv.innerHTML = `
+                <h4>${title}</h4>
+                <p><strong>Status:</strong> ${status.toUpperCase()}</p>
+                <details>
+                    <summary>Details</summary>
+                    <pre>${details}</pre>
+                </details>
+            `;
+        resultsDiv.appendChild(resultDiv);
+      }
+
+      async function testDirectAPI() {
+        log("🔍 Testing direct API call...");
+        try {
+          const response = await fetch(API_URL);
+          const text = await response.text();
+          log(`✅ Direct API responded with status ${response.status}`);
+          addResult(
+            "Direct API Test",
+            "success",
+            `Status: ${response.status}\nResponse: ${text.substring(0, 500)}...`
+          );
+        } catch (error) {
+          log(`❌ Direct API failed: ${error.message}`);
+          addResult("Direct API Test", "error", error.message);
+        }
+      }
+
+      async function testAllProxies() {
+        log("🔄 Testing all proxy services...");
+
+        for (let i = 0; i < PROXY_URLS.length; i++) {
+          const proxyUrl = PROXY_URLS[i];
+          log(`Testing proxy ${i + 1}: ${proxyUrl}`);
+
+          try {
+            let fetchUrl;
+            if (proxyUrl.includes("allorigins.win")) {
+              fetchUrl = `${proxyUrl}${encodeURIComponent(API_URL)}`;
+            } else {
+              fetchUrl = `${proxyUrl}${API_URL}`;
+            }
+
+            const response = await fetch(fetchUrl);
+            let responseData;
+
+            if (
+              response.headers.get("content-type")?.includes("application/json")
+            ) {
+              const jsonData = await response.json();
+              responseData = jsonData.contents || jsonData;
+            } else {
+              responseData = await response.text();
+            }
+
+            log(`✅ Proxy ${i + 1} responded with status ${response.status}`);
+
+            // Try to parse the XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(responseData, "text/xml");
+            const dataElements = xmlDoc.querySelectorAll("Data");
+
+            addResult(
+              `Proxy ${i + 1} Test (${proxyUrl.split("//")[1].split("/")[0]})`,
+              "success",
+              `Status: ${response.status}\nData elements found: ${
+                dataElements.length
+              }\nResponse preview: ${responseData.substring(0, 300)}...`
+            );
+
+            if (dataElements.length > 0) {
+              log(`🎉 Found ${dataElements.length} gold price records!`);
+              break; // Success, stop testing other proxies
+            }
+          } catch (error) {
+            log(`❌ Proxy ${i + 1} failed: ${error.message}`);
+            addResult(
+              `Proxy ${i + 1} Test (${proxyUrl.split("//")[1].split("/")[0]})`,
+              "error",
+              error.message
+            );
+          }
+        }
+      }
+
+      function clearLogs() {
+        document.getElementById("logs").innerHTML = "";
+        document.getElementById("results").innerHTML = "";
+      }
+
+      function loadMainSite() {
+        window.location.href = "index.html";
+      }
+
+      // Auto-run tests on page load
+      window.addEventListener("load", function () {
+        log("🚀 API Test page loaded. Running initial tests...");
+        setTimeout(testAllProxies, 1000);
+      });
+    </script>
+  </body>
+</html>
