@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giá Vàng BTMC - Cập Nhật Realtime</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div class="header-content">
+          <h1><i class="fas fa-coins"></i> Giá Vàng BTMC</h1>
+          <p class="subtitle">Cập nhật giá vàng theo thời gian thực</p>
+          <div class="last-update">
+            <span id="lastUpdate">Đang tải...</span>
+            <button id="refreshBtn" class="refresh-btn">
+              <i class="fas fa-sync-alt"></i> Làm mới
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p>Đang tải dữ liệu giá vàng...</p>
+        </div>
+
+        <div id="error" class="error hidden">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Không thể tải dữ liệu. Vui lòng thử lại sau.</p>
+          <button onclick="fetchGoldPrices()" class="retry-btn">Thử lại</button>
+        </div>
+
+        <div id="goldPricesContainer" class="gold-container hidden">
+          <div class="summary-cards">
+            <div class="summary-card">
+              <div class="card-icon">
+                <i class="fas fa-arrow-up"></i>
+              </div>
+              <div class="card-content">
+                <h3>Giá cao nhất</h3>
+                <p id="highestPrice">-</p>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="card-icon">
+                <i class="fas fa-arrow-down"></i>
+              </div>
+              <div class="card-content">
+                <h3>Giá thấp nhất</h3>
+                <p id="lowestPrice">-</p>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="card-icon">
+                <i class="fas fa-globe"></i>
+              </div>
+              <div class="card-content">
+                <h3>Giá thế giới</h3>
+                <p id="worldPrice">-</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <div class="filter-group">
+              <label for="categoryFilter">Lọc theo loại vàng:</label>
+              <select id="categoryFilter">
+                <option value="">Tất cả</option>
+              </select>
+            </div>
+            <div class="search-group">
+              <label for="searchInput">Tìm kiếm:</label>
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Nhập tên loại vàng..."
+              />
+            </div>
+          </div>
+
+          <div class="gold-grid" id="goldGrid">
+            <!-- Gold price cards will be inserted here -->
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <p>© 2024 Gold Price Tracker | Dữ liệu từ API BTMC</p>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
