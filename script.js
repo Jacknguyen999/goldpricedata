@@ -101,7 +101,7 @@ function parseGoldData(jsonData) {
     }
 
     const dataArray = jsonData.DataList.Data;
-    const goldPrices = [];
+    const goldPricesMap = new Map();
 
     dataArray.forEach((item, index) => {
       const row = item["@row"] || (index + 1).toString();
@@ -130,11 +130,30 @@ function parseGoldData(jsonData) {
       console.log(`Item ${index + 1}:`, goldItem);
 
       if (goldItem.name && goldItem.name.trim()) {
-        goldPrices.push(goldItem);
+        const key = goldItem.name.trim();
+
+        // Keep only the latest entry for each gold type
+        if (!goldPricesMap.has(key)) {
+          goldPricesMap.set(key, goldItem);
+        } else {
+          const existing = goldPricesMap.get(key);
+          // Compare update times - keep the newer one
+          // If updateTime is not reliable, we can use row number (higher = newer)
+          if (
+            goldItem.updateTime > existing.updateTime ||
+            (!goldItem.updateTime &&
+              parseInt(goldItem.row) > parseInt(existing.row))
+          ) {
+            goldPricesMap.set(key, goldItem);
+          }
+        }
       }
     });
 
-    console.log(`Successfully parsed ${goldPrices.length} gold items`);
+    const goldPrices = Array.from(goldPricesMap.values());
+    console.log(
+      `Successfully parsed ${goldPrices.length} unique gold items (filtered from ${dataArray.length} total entries)`
+    );
     return goldPrices;
   } catch (error) {
     console.error("Error in parseGoldData:", error);
